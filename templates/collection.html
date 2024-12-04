@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="Solution de l'équipe 'Les CNP du Grand Est' - Plateforme qui promeut le patrimoine normand et le tourisme durable" />
+        <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+        <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+        <title>Normand'Go - Ma Collection</title>
+        <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+        <link href="static/css/styles.css" rel="stylesheet" />
+
+        <style>
+            .container {
+                width: 100%;
+                background-color: white;
+                background-color: #ffffff; /* Fond foncé pour contraste */
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                margin: 20px auto;
+            }
+
+            .header {
+                text-align: center;
+                font-size: 1.8em;
+                font-weight: bold;
+                margin-bottom: 20px;
+                color: #007bff;
+            }
+
+            .details, .badges, .tiers {
+                margin-bottom: 20px;
+            }
+            
+            .details {
+                margin-bottom: 20px;
+                padding: 10px;
+                background-color: #f8f9fa; /* Couleur grisée douce */
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .details img {
+                width: 30px;
+                margin-right: 10px;
+            }
+
+            .details div {
+                flex-grow: 1;
+            }
+
+            .badge {
+                display: flex;
+                flex-direction: column;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .badge-title {
+                font-weight: bold;
+                color: #495057;
+            }
+
+            .badge-description {
+                font-size: 0.9em;
+                color: #6c757d;
+            }
+
+            .tier {
+                margin-bottom: 20px;
+            }
+
+            .tier h3 {
+                margin: 0;
+                color: #007bff;
+            }
+
+            .tier ul {
+                list-style: none;
+                padding: 0;
+            }
+
+            .tier ul li {
+                display: flex;
+                justify-content: space-between;
+                padding: 5px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 5px;
+                margin-bottom: 5px;
+            }
+
+            .tier ul li button {
+                background-color: #28a745;
+                color: #ffffff;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                cursor: pointer;
+            }
+
+            .tier ul li button:hover {
+                background-color: #218838;
+            }
+
+            .user-id-input {
+                display: flex;
+                margin-bottom: 20px;
+                justify-content: center;
+            }
+
+            .user-id-input input {
+                border-radius: 5px;
+                border: 1px solid #ced4da;
+                padding: 5px 10px;
+                background-color: #ffffff; /* Fond sombre */
+                color: #495057; /* Texte clair */
+            }
+
+            .user-id-input button {
+                background-color: #007bff;
+                color: #ffffff;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                cursor: pointer;
+            }
+
+            .user-id-input button:hover {
+                background-color: #0056b3;
+            }
+            
+            .tier.disabled {
+                opacity: 0.5; /* Grise le palier */
+                pointer-events: none; /* Désactive les clics */
+            }
+            
+            .tiers {
+                margin-top: -90px; /* Réduit l'espace entre la barre de progression et les paliers */
+            }
+            
+            .progression {
+                position: relative;
+                margin: 50px 0; /* Ajout de marge pour descendre la barre */
+                text-align: center;
+                height: 80px; /* Inclut l'espace pour la flèche et les badges */
+            }
+
+            .progress-bar {
+                position: relative;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background-color: #f8f9fa;
+                border-radius: 10px;
+                height: 10px;
+                width: 100%;
+                margin: 0 auto;
+            }
+
+            .progress-step {
+                position: absolute;
+                top: -5px; /* Position au-dessus de la barre */
+                transform: translateX(-50%);
+                width: 20px;
+                height: 20px;
+                background-color: #dee2e6;
+                border-radius: 50%;
+                text-align: center;
+                line-height: 20px;
+                font-size: 0.8em;
+                color: #495057;
+            }
+
+            .progress-step.active {
+                background-color: #007bff;
+                color: #ffffff; /* Texte blanc */
+            }
+
+            .progress-indicator {
+                position: absolute;
+                top: -35px; /* Descend la flèche */
+                transform: translateX(-50%);
+                width: 25px;
+                height: 25px;
+                background-color: #007bff;
+                border-radius: 50%;
+                text-align: center;
+                line-height: 25px;
+                color: #ffffff;
+                font-size: 0.9em;
+                z-index: 1;
+            }
+
+            .progress-indicator.disabled {
+                background-color: #6c757d; /* Grise le curseur */
+                color: #adb5bd; /* Texte grisé */
+            }
+
+            .progress-indicator::after {
+                content: '';
+                position: absolute;
+                bottom: -6px; /* Ajuste la flèche pour qu'elle touche la barre */
+                left: 50%;
+                transform: translateX(-50%);
+                width: 12px;
+                height: 12px;
+                background-color: inherit;
+                clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            }
+
+            .progress-message {
+                margin-top: 20px; /* Ajout d'espace entre la barre et le texte */
+                font-size: 0.9em;
+                color: #6c757d;
+                text-align: center;
+            }
+            
+            .logo-nc {
+                width: 30px;
+                height: 30px;
+            }
+        </style>
+    </head>
+    <body class="sb-nav-fixed">
+        {% include 'common/header.html' %}
+        {% include 'common/sidebar.html' %}
+        <div id="layoutSidenav_content">
+            <div class="custom-header">
+                <div>Ma Collection</div>
+            </div>
+            
+            <main>
+                <div class="container">
+                    <!-- Champ pour entrer l'identifiant utilisateur -->
+                    <div class="user-id-input">
+                        <input id="userIdInput" type="text" placeholder="Entrez votre ID utilisateur">
+                        <button onclick="loadUserDetails()">Voir ma collection</button>
+                    </div>
+
+                    <div id="details" class="details">
+                        <p><strong>Niveau :</strong> <span id="level">-</span></p>
+                        <p>
+                            <img src="{{ url_for('static', filename='imgs/logo_detoure.png') }}" alt="NC" class="logo-nc" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 0px;">
+                            <strong>NormandCoins (NC) :</strong>
+                            <span id="coins"></span>
+                        </p>
+                        <p><strong>NormandCoins pour le prochain niveau :</strong> <span id="coinsNextLevel">-</span></p>
+                    </div>
+
+                    <div id="badges" class="badges">
+                        <p><strong>Badges débloqués :</strong></p>
+                        <div id="badgeList">-</div>
+                    </div>
+                    
+                    <div id="progression" class="progression">
+                        <div id="progressIndicator" class="progress-indicator"></div>
+                        <div id="progressBar" class="progress-bar"></div>
+                        <div id="progressMessage" class="progress-message"></div>
+                    </div>
+
+                    
+                    <div id="tiers" class="tiers">
+                        <p><strong>Vos avantages :</strong></p>
+                        <div id="tiersContainer" class="tiers-container">
+                            <!-- Les paliers et avantages seront ajoutés dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+            {% include 'common/footer.html' %}
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+        <script>
+            let currentUserId = null;
+
+            async function loadUserDetails() {
+                const userIdInput = document.getElementById("userIdInput");
+                const userId = userIdInput.value.trim();
+
+                if (!userId) {
+                    alert("Veuillez entrer un ID utilisateur valide.");
+                    return;
+                }
+
+                currentUserId = userId;
+
+                const response = await fetch(`/api/user/${userId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById("level").textContent = data.level;
+                    document.getElementById("coins").textContent = data.coins;
+                    document.getElementById("coinsNextLevel").textContent = data.coins_for_next_level;
+
+                    const badgeList = document.getElementById("badgeList");
+                    badgeList.innerHTML = "";
+                    data.badges.forEach(badge => {
+                        const badgeDiv = document.createElement("div");
+                        badgeDiv.className = "badge";
+                        badgeDiv.innerHTML = `
+                            <div class="badge-title">${badge.name}</div>
+                            <div class="badge-description">${badge.description}</div>
+                        `;
+                        badgeList.appendChild(badgeDiv);
+                    });
+
+                    loadTiers();
+                } else {
+                    alert(data.error || "Erreur de chargement des données utilisateur.");
+                    document.getElementById("level").textContent = "-";
+                    document.getElementById("coins").textContent = "-";
+                    document.getElementById("coinsNextLevel").textContent = "-";
+                    document.getElementById("badgeList").innerHTML = "-";
+                }
+            }
+            
+            function updateProgression(currentCoins, tiers) {
+                const progressBar = document.getElementById("progressBar");
+                const progressIndicator = document.getElementById("progressIndicator");
+                const progressMessage = document.getElementById("progressMessage");
+
+                progressBar.innerHTML = "";
+                progressMessage.textContent = "";
+
+                const totalTiers = tiers.length;
+                let currentTierIndex = -1;
+                let nextTier = null;
+
+                tiers.forEach((tier, index) => {
+                    const step = document.createElement("div");
+                    step.className = "progress-step";
+                    step.style.left = `${(index / (totalTiers - 1)) * 100}%`;
+                    step.textContent = tier.tier;
+
+                    if (tier.accessible) {
+                        step.classList.add("active");
+                        currentTierIndex = index;
+                    }
+
+                    progressBar.appendChild(step);
+                });
+
+                const stepWidth = totalTiers > 1 ? 100 / (totalTiers - 1) : 100;
+                const indicatorPosition = currentTierIndex >= 0
+                    ? Math.min(currentTierIndex * stepWidth, 100)
+                    : 0;
+
+                progressIndicator.style.left = `${indicatorPosition}%`;
+                progressIndicator.textContent = currentTierIndex >= 0 ? tiers[currentTierIndex].tier : "0";
+
+                if (currentTierIndex === -1) {
+                    progressIndicator.classList.add("disabled");
+                    progressMessage.textContent = "Aucun palier accessible. Gagnez plus de NC pour débloquer des paliers.";
+                } else {
+                    progressIndicator.classList.remove("disabled");
+
+                    if (currentTierIndex + 1 < tiers.length) {
+                        nextTier = tiers[currentTierIndex + 1];
+                        const coinsNeeded = nextTier.min_nc - currentCoins;
+                        progressMessage.textContent = `Il vous reste ${coinsNeeded} NC pour atteindre le Palier ${nextTier.tier}.`;
+                    } else {
+                        progressMessage.textContent = "Vous avez atteint le dernier palier !";
+                    }
+                }
+            }
+
+            async function loadTiers() {
+                const response = await fetch(`/api/tiers/${currentUserId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const tiersContainer = document.getElementById("tiersContainer");
+                    tiersContainer.innerHTML = "";
+
+                    document.getElementById("coins").textContent = data.current_coins;
+
+                    updateProgression(data.current_coins, data.tiers);
+
+                    data.tiers.forEach(tier => {
+                        const tierDiv = document.createElement("div");
+                        tierDiv.className = `tier ${tier.accessible ? "" : "disabled"}`;
+                        tierDiv.style.opacity = tier.accessible ? "1" : "0.5";
+
+                        tierDiv.innerHTML = `
+                            <h3>Palier ${tier.tier} (${tier.min_nc}-${tier.max_nc === "∞" ? "∞" : tier.max_nc} NC)</h3>
+                            <ul>
+                                ${tier.rewards.map(reward => `
+                                    <li>
+                                        <span>${reward.name} - ${reward.cost} <img src="{{ url_for('static', filename='imgs/logo.png') }}" alt="NC" style="width: 15px; height: 15px; vertical-align: middle;"></span>
+                                        ${tier.accessible ? `<button onclick="purchaseItem(${reward.cost})">Acheter</button>` : ""}
+                                    </li>
+                                `).join("")}
+                            </ul>
+                        `;
+                        tiersContainer.appendChild(tierDiv);
+                    });
+                } else {
+                    alert(data.error || "Erreur lors du chargement des paliers.");
+                }
+            }
+
+            async function purchaseItem(cost) {
+                const response = await fetch("/api/purchase_tier", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: currentUserId, cost })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    loadUserDetails();
+                } else {
+                    alert(data.error || "Erreur lors de l'achat.");
+                }
+            }
+        </script>
+    </body>
+</html>

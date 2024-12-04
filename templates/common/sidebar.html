@@ -1,0 +1,90 @@
+<div id="layoutSidenav">
+    <div id="layoutSidenav_nav">
+        <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+            <div class="sb-sidenav-menu">
+                <div class="nav">
+                    <div class="sb-sidenav-menu-heading">Outils</div>
+                    <a class="nav-link" href="/index">
+                        <div class="sb-nav-link-icon"><i class="fas fa-globe"></i></div>
+                        Carte interactive
+                    </a>
+                    <a class="nav-link" href="/rag_agent">
+                        <div class="sb-nav-link-icon"><i class="fas fa-comments"></i></div>
+                        IA conversationnelle
+                    </a>
+
+                    <a class="nav-link" href="/collection">
+                        <div class="sb-nav-link-icon"><i class="fas fa-gift"></i></div>
+                        Ma collection - Bons d'achat
+                    </a>
+
+                    <a class="nav-link" href="/recommandation">
+                        <div class="sb-nav-link-icon"><i class="fas fa-lightbulb"></i></div>
+                        Les recommandations
+                    </a>
+                    
+                    <div class="sb-sidenav-menu-heading">Découvrir</div>
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseMonuments" aria-expanded="false" aria-controls="collapseMonuments">
+                        <div class="sb-nav-link-icon"><i class="fas fa-book-open"></i></div>
+                        Monuments
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                    </a>
+                    <div class="collapse" id="collapseMonuments" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav">
+                            <a class="nav-link" href="/calvados"><del>Calvados (14)</del></a>
+                            <a class="nav-link" href="/eure"><del>Eure (27)</del></a>
+                            <a class="nav-link" href="/manche"><del>Manche (50)</del></a>
+                            <a class="nav-link" href="/orne"><del>Orne (61)</del></a>
+                            <a class="nav-link" href="/monuments">Seine-Maritime (76)</a>
+                        </nav>
+                    </div>
+                    
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseRestaurants" aria-expanded="false" aria-controls="collapseRestaurants">
+                        <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div>
+                        Restaurants
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                    </a>
+                    <div class="collapse" id="collapseRestaurants" aria-labelledby="headingTwo" data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav">
+                            <a class="nav-link" href="/calvados"><del>Calvados (14)</del></a>
+                            <a class="nav-link" href="/eure"><del>Eure (27)</del></a>
+                            <a class="nav-link" href="/manche"><del>Manche (50)</del></a>
+                            <a class="nav-link" href="/orne"><del>Orne (61)</del></a>
+                            <a class="nav-link" href="/restaurants">Seine-Maritime (76)</a>
+                        </nav>
+                    </div>
+                    
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAgenda" aria-expanded="false" aria-controls="collapseAgenda">
+                        <div class="sb-nav-link-icon"><i class="fas fa-calendar"></i></div>
+                        Agenda des évènements
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                    </a>
+                    <div class="collapse" id="collapseAgenda" aria-labelledby="headingThree" data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav">
+                            <a class="nav-link" href="/calvados"><del>Calvados (14)</del></a>
+                            <a class="nav-link" href="/eure"><del>Eure (27)</del></a>
+                            <a class="nav-link" href="/manche"><del>Manche (50)</del></a>
+                            <a class="nav-link" href="/orne"><del>Orne (61)</del></a>
+                            <a class="nav-link" href="/agenda">Seine-Maritime (76)</a>
+                        </nav>
+                    </div>
+       
+                    
+                    <div class="sb-sidenav-menu-heading">Admin</div>
+                    <a class="nav-link" href="{{ url_for('charts') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-chart-area"></i></div>
+                        Statistiques
+                    </a>
+                    <a class="nav-link" href="{{ url_for('tables') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-table"></i></div>
+                        Tables
+                    </a>
+                </div>
+            </div>
+            <div class="sb-sidenav-footer">
+                <div class="small">Connecté en tant que :</div>
+                <b>{{ name }}</b>
+            </div>
+        </nav>
+    </div>
+

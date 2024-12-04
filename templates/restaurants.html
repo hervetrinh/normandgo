@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Liste des restaurants de Normand'Go" />
+    <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+    <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+    <title>Normand'Go - Restaurants</title>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet" />
+    <style>
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform .2s;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        .card-img-top {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .card-title {
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            padding: 10px 0;
+        }
+
+        .pagination a {
+            margin: 0 5px;
+            padding: 8px 16px;
+            text-decoration: none;
+            color: #007bff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .pagination a.active {
+            background-color: #007bff;
+            color: white;
+            border: 1px solid #007bff;
+        }
+
+        .pagination a:hover:not(.active) {
+            background-color: #ddd;
+        }
+
+        .tag {
+            background-color: #f0ad4e;
+            color: white;
+            padding: 2px 5px;
+            margin: 2px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+    </style>
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body class="sb-nav-fixed">
+    {% include 'common/header.html' %}
+    {% include 'common/sidebar.html' %}
+
+    <div id="layoutSidenav_content">
+        <main>
+            <div class="custom-header">
+                Restaurants
+            </div>
+            
+            <div class="container-fluid px-4">
+                <br>
+                <div class="row">
+                    {% for restaurant in restaurants %}
+                        <div class="col-lg-6 col-md-6 col-sm-12 mb-4">
+                            <div class="card">
+                                <a href="{{ url_for('lieu', tsid=restaurant['TSID']) }}">
+                                    <img src="{{ restaurant['PHOTO'] }}" class="card-img-top" alt="{{ restaurant['NOM'] }}">
+                                </a>
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ restaurant['NOM'] }}</h5>
+                                    <p class="card-text">Commune: {{ restaurant['COMMUNE'] }}</p>
+                                    <p class="card-text">
+                                        {% if restaurant['DESCRIPTIF']|length > 100 %}
+                                            {{ restaurant['DESCRIPTIF'][:100] }}... <a href="{{ url_for('lieu', tsid=restaurant['TSID']) }}">lire plus</a>
+                                        {% else %}
+                                            {{ restaurant['DESCRIPTIF'] }}
+                                        {% endif %}
+                                    </p>
+                                    {% if restaurant['SPECIALITES'] %}
+                                        <div class="row specialties">
+                                            <div class="col-12">
+                                                <p><i class="fas fa-utensils"></i><strong> Spécialités : </strong>
+                                                    {% for specialty in restaurant['SPECIALITES'].split(' ## ') %}
+                                                        <span class="tag">{{ specialty }}</span>
+                                                    {% endfor %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('restaurants', page=page-1) }}">&laquo; Précédent</a>
+                    {% endif %}
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                            <a href="{{ url_for('restaurants', page=p) }}" class="active">{{ p }}</a>
+                        {% elif p <= 2 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                            <a href="{{ url_for('restaurants', page=p) }}">{{ p }}</a>
+                        {% elif p == 3 and page > 4 %}
+                            <span>...</span>
+                        {% elif p == total_pages - 2 and page < total_pages - 3 %}
+                            <span>...</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page < total_pages %}
+                        <a href="{{ url_for('restaurants', page=page+1) }}">Suivant &raquo;</a>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+        {% include 'common/footer.html' %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+</body>
+</html>

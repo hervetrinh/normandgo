@@ -1,0 +1,102 @@
+# Columns to combine for feature extraction
+combined_features_columns:
+  - NOM
+  - DESCRIPTIF
+
+# Batch size for feature extraction
+batch_size: 32
+
+# Alpha weight for cosine similarity adjustment
+alpha: 0.5
+
+data:
+  lieux_visite_path: "data/Lieux de visite.xlsx"
+  feedback_file: "data/Verbatims.pkl"
+  id_login_file: "data/id_login.csv"
+  acceslibre_file: "data/acceslibre-with-web-url.csv"
+  datatour_file: "data/Lieux de visite.xlsx"
+  models:
+    bike_model_path: "models/generalized_model_bikes_available.pkl"
+    dock_model_path: "models/generalized_model_docks_available.pkl"
+    station_id_mapping_path: "models/station_id_mapping.pkl"
+
+osrm:
+  url: "http://router.project-osrm.org/route/v1/foot"
+
+gtfs:
+  path: "data/atoumod/"
+
+station_info:
+  url: "https://gbfs.urbansharing.com/lovelolibreservice.fr/station_information.json"
+
+station_status:
+  url: "https://gbfs.urbansharing.com/lovelolibreservice.fr/station_status.json"
+
+overpass:
+  query: |
+    [out:json][timeout:25];
+    (
+      node["amenity"="drinking_water"](49.0, -1.7, 50.0, 1.5);
+      way["amenity"="drinking_water"](49.0, -1.7, 50.0, 1.5);
+      relation["amenity"="drinking_water"](49.0, -1.7, 50.0, 1.5);
+    );
+    out body;
+    >;
+    out skel qt;
+
+openagenda:
+  agenda_uids: [11317568, 11362982, 881924, 59233841, 6418448]
+
+embedding_model:
+  name: sentence-transformers/all-MiniLM-L6-v2
+
+collection:
+  database:
+    users_file: "data/users.csv"
+
+  badges:
+    "Incontournable de la Normandie": "A visité la Cathédrale de Rouen"
+    "Connaisseur de la région": "A visité 50% de la Normandie"
+    "Ami des deux roues": "S'est déplacé en vélo sur plus de 10 km"
+
+  tiers:
+    - tier: 1
+      min_nc: 1000
+      max_nc: 2000
+      rewards:
+        - name: "Carte postale offerte"
+          cost: 1000
+        - name: "Réduction 10% sur toutes les stations vélos 24H"
+          cost: 1000
+        - name: "Goodies mystère"
+          cost: 1000
+    - tier: 2
+      min_nc: 2000
+      max_nc: 3000
+      rewards:
+        - name: "Bon d'achat - 5€"
+          cost: 2000
+        - name: "Ticket de bus offert dans Rouen"
+          cost: 2000
+        - name: "Boisson gratuite dans un restaurant participant"
+          cost: 2000
+    - tier: 3
+      min_nc: 3000
+      max_nc: 5000
+      rewards:
+        - name: "Bon d'achat - 15€"
+          cost: 3000
+        - name: "Piste VIP"
+          cost: 3000
+        - name: "Dîner spécial"
+          cost: 3000
+    - tier: 4
+      min_nc: 5000
+      max_nc: null
+      rewards:
+        - name: "Expérience deluxe"
+          cost: 5000
+        - name: "Voyage offert SNCF"
+          cost: 5000
+        - name: "Cadeau premium"
+          cost: 5000

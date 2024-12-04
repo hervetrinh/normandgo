@@ -1,0 +1,90 @@
+<nav class="sb-topnav navbar navbar-expand navbar-custom">
+
+    <!-- Sidebar Toggle-->
+    <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
+
+    <!-- Navbar Brand-->
+    <a class="navbar-brand ps-3" href="{{ url_for('index') }}">  
+        <img src="{{ url_for('static', filename='imgs/logo.png') }}" alt="Logo" height="50"> Normand'Go  
+    </a>
+    
+    <!-- Navbar Search-->
+    <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0" style="position: relative;">
+        <div class="input-group">
+            <input class="form-control" type="text" id="search-input" placeholder="Rechercher..." aria-label="Search for..." aria-describedby="btnNavbarSearch" />
+            <button class="btn btn-primary" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
+        </div>
+        <div id="suggestions" class="suggestions"></div>
+    </form>
+
+    <!-- Navbar-->
+    <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                <li><a class="dropdown-item" href="#!">Réglages</a></li>
+                <li><a class="dropdown-item" href="#!">Journal d'activité</a></li>
+                <li><hr class="dropdown-divider" /></li>
+                <li><a class="dropdown-item" href="/">Déconnexion</a></li>
+            </ul>
+        </li>
+    </ul>
+    <img src="{{ url_for('static', filename='imgs/region_normandie.jpg') }}" alt="Logo" height="50">
+</nav>
+
+<style>
+    .suggestions {
+        border: 1px solid #ccc;
+        max-height: 200px;
+        overflow-y: auto;
+        position: absolute;
+        background-color: #fff;
+        z-index: 1000;
+        width: 100%;
+    }
+    .suggestion-item {
+        padding: 8px;
+        cursor: pointer;
+    }
+    .suggestion-item:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#search-input').on('input', function() {
+            let query = $(this).val();
+            if (query.length > 1) {
+                $.ajax({
+                    url: '{{ url_for("search") }}',
+                    data: { q: query },
+                    success: function(data) {
+                        let suggestions = $('#suggestions');
+                        suggestions.empty();
+                        data.forEach(function(item) {
+                            let suggestionItem = $('<div class="suggestion-item"></div>');
+                            suggestionItem.text(item.NOM);
+                            suggestionItem.data('tsid', item.TSID);
+                            suggestions.append(suggestionItem);
+                        });
+                    }
+                });
+            } else {
+                $('#suggestions').empty();
+            }
+        });
+
+        $(document).on('click', '.suggestion-item', function() {
+            let tsid = $(this).data('tsid');
+            window.location.href = '/lieu/' + tsid;
+        });
+
+        $('body').click(function(e) {
+            if (!$(e.target).closest('.suggestion-item').length && !$(e.target).closest('#search-input').length) {
+                $('#suggestions').empty();
+            }
+        });
+    });
+</script>
