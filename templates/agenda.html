@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Solution de l'équipe 'Les CNP du Grand Est' - Plateforme qui promeut le patrimoine normand et le tourisme durable" />
+    <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+    <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+    <title>Normand'Go - Agenda</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css" rel="stylesheet" />
+    <link href="static/css/styles.css" rel="stylesheet" />
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+
+</head>
+
+<body class="sb-nav-fixed">
+    {% include 'common/header.html' %}
+    {% include 'common/sidebar.html' %}
+
+    <div id="layoutSidenav_content">
+        <div class="container-fluid">
+            <h1 class="mt-4">Agenda</h1>
+            <div id="calendar"></div>
+        </div>
+        {% include 'common/footer.html' %}
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="eventModalLabel">Événements du jour</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul id="eventList" class="list-group">
+                        <!-- Les événements seront ajoutés ici dynamiquement -->
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/locales-all.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'fr', // Définir la langue en français
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    fetch('{{ url_for("get_events") }}')
+                        .then(response => response.json())
+                        .then(data => {
+                            const events = Object.keys(data.event_count).map(date => {
+                                return {
+                                    title: data.event_count[date] + ' événement(s)',
+                                    start: date,
+                                    allDay: true, // Assurez-vous que l'événement est affiché sur toute la journée
+                                    extendedProps: {
+                                        events: data.events.filter(event => event.start.split('T')[0] === date)
+                                    }
+                                };
+                            });
+                            successCallback(events);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching events:', error);
+                            failureCallback(error);
+                        });
+                },
+                eventClick: function(info) {
+                    var events = info.event.extendedProps.events;
+                    var eventList = document.getElementById('eventList');
+                    eventList.innerHTML = ''; // Clear existing events
+
+                    events.forEach(event => {
+                        var listItem = document.createElement('li');
+                        listItem.classList.add('list-group-item');
+                        listItem.innerHTML = `
+                            <strong>${event.title}</strong><br>
+                            Début : ${new Date(event.start).toLocaleString('fr-FR')}<br>
+                            Fin : ${new Date(event.end).toLocaleString('fr-FR')}<br>
+                            Description : ${event.description}<br>
+                            Lieu : ${event.location}
+                        `;
+                        eventList.appendChild(listItem);
+                    });
+
+                    var eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+                    eventModal.show();
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

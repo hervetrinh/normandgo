@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="Solution de l'équipe 'Les CNP du Grand Est' - Plateforme qui promeut le patrimoine normand et le tourisme durable" />
+        <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+        <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+        <title>Normand'Go - Carte Interactive</title>
+        <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
+        <link href="static/css/styles.css" rel="stylesheet" />
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+        <style>
+            #map {
+            }
+            .input-container {
+                margin: 10px;
+                display: flex;
+                justify-content: space-between;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+            }
+            .input-container input,
+            .input-container select {
+                margin-right: 5px;
+                flex-grow: 1;
+                padding: 5px;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+            }
+            .input-container button {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+            .input-container button:hover {
+                background-color: #0056b3;
+            }
+            .info-container {
+                margin-top: 15px;
+                background-color: #f9f9f9;
+                padding: 10px;
+                border-radius: 5px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .info-banner {
+                position: absolute;
+                bottom: 80px; /* Ajustez si besoin pour l'espacement */
+                left: 230px; /* Place le bandeau sur la gauche */
+                background-color: rgba(255, 255, 255, 0.9);
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 10px 20px;
+                border-radius: 10px;
+                font-size: 14px;
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                z-index: 1000; /* Assurez-vous que le bandeau est au-dessus de la carte */
+            }
+
+            .info-banner p {
+                margin: 0;
+            }
+
+            .info-banner .icon {
+                font-size: 20px;
+                color: #007bff;
+            }
+            .validate-button button {
+                background-color: #007bff; /* Couleur principale */
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 15px; /* Ajuster si besoin */
+                font-size: 14px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .validate-button button:hover {
+                background-color: #0056b3; /* Couleur au survol */
+            }
+        </style>
+    </head>
+    <body class="sb-nav-fixed">
+        {% include 'common/header.html' %}
+        {% include 'common/sidebar.html' %}
+
+            <div id="layoutSidenav_content">
+              <div class="input-container">
+                 <select id="modeSelector">
+                     <option value="bike">Vélo</option>
+                     <option value="bus">Transport en commun</option>
+                 </select>
+                 <input type="text" id="startAddress" placeholder="Adresse de départ" />
+                 <input type="text" id="endAddress" placeholder="Adresse d'arrivée" />
+                 <button onclick="geocodeAddresses()">Valider</button>
+                 <button onclick="resetSelection()">Reset</button>
+             </div>
+             <div id="map"></div>
+                {% include 'common/footer.html' %}
+            </div>
+            <div class="info-banner" id="infoBanner">
+                <div>
+                    <span class="icon"  id="transportIcon"><i class="fas fa-bicycle"></i></span>
+                    <p id="transportMode">Mode de transport : Vélo</p>
+                </div>
+                <div>
+                    <span class="icon"><i class="fas fa-leaf"></i></span>
+                    <p id="co2Emissions">Émissions de CO2 : 0 g</p>
+                </div>
+            </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+        <script src="static/js/scripts.js"></script>
+        <script>
+        // Variables pour stocker les points et les marqueurs
+        var startPoint, endPoint;
+        var polylines = []; // Stocker les lignes des itinéraires
+
+        var startPointMarker = null;
+        var endPointMarker = null;
+        var stationMarkers = [];
+        var startStation = null;
+        var endStation = null;
+
+
+        // API Geocoding URL (utilisation de Nominatim avec une restriction géographique sur Rouen)
+        const geocodeAPI = "https://nominatim.openstreetmap.org/search";
+
+        // Fonction pour gérer l'autocomplétion avec un debounce et un timeout pour la requête API
+        function autocompleteAddress(inputId, resultHandler) {
+            const input = document.getElementById(inputId);
+            let debounceTimeout = null; // Timeout pour le debounce
+
+            input.addEventListener("input", () => {
+                const query = input.value.trim();
+                if (query.length < 3) return; // Ne pas rechercher pour moins de 3 caractères
+
+                // Effacer les anciens timeouts pour éviter des requêtes inutiles
+                clearTimeout(debounceTimeout);
+
+                // Attendre 1 seconde après la fin de la saisie pour lancer la requête
+                debounceTimeout = setTimeout(async () => {
+                    const source = axios.CancelToken.source(); // Création d'un token pour annuler la requête
+
+                    // Déclencher un timeout de 3 secondes pour annuler la requête API
+                    const apiTimeout = setTimeout(() => {
+                        source.cancel("La requête a été annulée après 3 secondes.");
+                    }, 10000);
+
+                    try {
+                        const response = await axios.get(geocodeAPI, {
+                            params: {
+                                q: query + ", Rouen, France", // Ajouter le contexte de Rouen pour de meilleures correspondances
+                                format: "json",
+                                addressdetails: 1,
+                                limit: 5
+                            },
+                            cancelToken: source.token // Associer le token à la requête
+                        });
+
+                        clearTimeout(apiTimeout); // Annuler le timeout si la requête a réussi
+
+                        const suggestions = response.data;
+
+                        // Si aucune suggestion, informer l'utilisateur
+                        if (suggestions.length === 0) {
+                            showSuggestions(
+                                [{ display_name: "Aucune adresse trouvée pour cette recherche." }],
+                                input,
+                                true // Mode "aucun résultat"
+                            );
+                        } else {
+                            resultHandler(suggestions, input);
+                        }
+                    } catch (error) {
+                        if (axios.isCancel(error)) {
+                            console.warn("Requête annulée :", error.message);
+                        } else {
+                            console.error("Erreur d'autocomplétion :", error);
+                        }
+                    }
+                }, 1000); // 1 seconde après que l'utilisateur a cessé de taper
+            });
+        }
+
+        // Sauvegarde les coordonnées après autocomplétion
+        function showSuggestions(suggestions, inputElement) {
+            let suggestionsBox = document.getElementById(`${inputElement.id}-suggestions`);
+            if (!suggestionsBox) {
+                suggestionsBox = document.createElement("div");
+                suggestionsBox.id = `${inputElement.id}-suggestions`;
+                suggestionsBox.style.position = "absolute";
+                suggestionsBox.style.backgroundColor = "white";
+                suggestionsBox.style.border = "1px solid black";
+                suggestionsBox.style.zIndex = "1000";
+                document.body.appendChild(suggestionsBox);
+            }
+
+            const rect = inputElement.getBoundingClientRect();
+            suggestionsBox.style.left = `${rect.left}px`;
+            suggestionsBox.style.top = `${rect.bottom}px`;
+            suggestionsBox.style.width = `${rect.width}px`;
+
+            suggestionsBox.innerHTML = "";
+
+            suggestions.forEach(suggestion => {
+                const suggestionItem = document.createElement("div");
+                suggestionItem.style.padding = "5px";
+                suggestionItem.style.cursor = "pointer";
+                suggestionItem.textContent = suggestion.display_name;
+
+                suggestionItem.onclick = () => {
+                    inputElement.value = suggestion.display_name;
+                    suggestionsBox.style.display = "none";
+                    inputElement.dataset.lat = suggestion.lat;
+                    inputElement.dataset.lon = suggestion.lon;
+
+                    // Sauvegarder dans localStorage
+                    localStorage.setItem(`${inputElement.id}_lat`, suggestion.lat);
+                    localStorage.setItem(`${inputElement.id}_lon`, suggestion.lon);
+                };
+                suggestionsBox.appendChild(suggestionItem);
+            });
+
+            suggestionsBox.style.display = "block";
+        }
+
+        function prefillEndAddress() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const endAddressInput = document.getElementById("endAddress");
+          const destinationLat = urlParams.get('destinationLat');
+          const destinationLng = urlParams.get('destinationLng');
+          const name = urlParams.get('name');
+          const modeUrl = urlParams.get('mode');
+          if (destinationLat) {
+              endAddressInput.dataset.lat = destinationLat;
+              endAddressInput.dataset.lon = destinationLng;
+              endAddressInput.value = name;
+            }
+            if (modeUrl) {
+                const modeSelector = document.getElementById("modeSelector");
+                modeSelector.value = modeUrl; // Ajuste le sélecteur au mode passé
+            }
+          }
+
+        // Restaurer les données au chargement de la page
+        function restoreCoordinates() {
+            const startAddress = document.getElementById("startAddress");
+            const endAddress = document.getElementById("endAddress");
+
+            // Récupérer les coordonnées depuis localStorage
+            const startLat = localStorage.getItem("startAddress_lat");
+            const startLon = localStorage.getItem("startAddress_lon");
+            const endLat = localStorage.getItem("endAddress_lat");
+            const endLon = localStorage.getItem("endAddress_lon");
+
+            if (startLat && startLon) {
+                startAddress.dataset.lat = startLat;
+                startAddress.dataset.lon = startLon;
+            }
+
+            if (endLat && endLon) {
+                endAddress.dataset.lat = endLat;
+                endAddress.dataset.lon = endLon;
+            }
+        }
+
+        // // Appeler cette fonction au chargement de la page
+        // restoreCoordinates();
+
+
+        // Appliquer l'autocomplétion aux champs
+        autocompleteAddress("startAddress", showSuggestions);
+        autocompleteAddress("endAddress", showSuggestions);
+
+        // Fonction pour géocoder une adresse
+        async function geocodeAddress(address) {
+            try {
+                const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+                    params: {
+                        q: `${address}, Rouen, France`, // Inclure Rouen pour limiter les résultats
+                        format: "json",
+                        addressdetails: 1,
+                        limit: 1
+                    }
+                });
+
+                if (response.data.length > 0) {
+                    const location = response.data[0];
+                    return { lat: parseFloat(location.lat), lng: parseFloat(location.lon) };
+                } else {
+                    alert(`Adresse non trouvée : ${address}`);
+                    return null;
+                }
+            } catch (error) {
+                console.error("Erreur lors du géocodage :", error);
+                alert("Erreur lors de la recherche de l'adresse.");
+                return null;
+            }
+        }
+
+        // Fonction pour géocoder les adresses sélectionnées ou automatiquement
+        async function geocodeAddresses() {
+            const startAddress = document.getElementById("startAddress");
+            const endAddress = document.getElementById("endAddress");
+            // Géocoder automatiquement si aucune suggestion n'a été sélectionnée
+            if (!startAddress.dataset.lat || !startAddress.dataset.lon) {
+                alert("Aucune suggestion n'a été sélectionnée pour l'adresse de départ. Recherche automatique...");
+                startPoint = await geocodeAddress(startAddress.value);
+            } else {
+              startPoint = { lat: parseFloat(startAddress.dataset.lat), lng: parseFloat(startAddress.dataset.lon) };
+            }
+
+            if (!endAddress.dataset.lat || !endAddress.dataset.lon) {
+                alert("Aucune suggestion n'a été sélectionnée pour l'adresse d'arrivée. Recherche automatique...");
+                endPoint = await geocodeAddress(endAddress.value);
+            } else {
+                endPoint = { lat: parseFloat(endAddress.dataset.lat), lng: parseFloat(endAddress.dataset.lon) };
+            }
+
+            // Ajouter les marqueurs sur la carte
+            if (startPoint) {
+                if (startPointMarker) map.removeLayer(startPointMarker); // Supprimez l'ancien marqueur si existant
+                startPointMarker = L.marker([startPoint.lat, startPoint.lng]).addTo(map)
+                    .bindPopup("Adresse de départ").openPopup();
+                stationMarkers.push(startPointMarker);
+            }
+            if (endPoint) {
+                if (endPointMarker) map.removeLayer(endPointMarker); // Supprimez l'ancien marqueur si existant
+                endPointMarker = L.marker([endPoint.lat, endPoint.lng]).addTo(map)
+                    .bindPopup("Adresse d'arrivée").openPopup();
+                stationMarkers.push(endPointMarker);
+            }
+
+            // Vérifiez si les stations sont définies
+            if (startStation) {
+                const marker = L.marker([startStation.latitude, startStation.longitude]).addTo(map)
+                    .bindPopup(`<b>${startStation.name}</b><br>Vélos disponibles : ${startStation.available_bikes}<br>Places libres : ${startStation.available_stands}`);
+                stationMarkers.push(marker);
+            }
+
+            if (endStation) {
+                const marker = L.marker([endStation.latitude, endStation.longitude]).addTo(map)
+                    .bindPopup(`<b>${endStation.name}</b><br>Vélos disponibles : ${endStation.available_bikes}<br>Places libres : ${endStation.available_stands}`);
+                stationMarkers.push(marker);
+            }
+        }
+
+        // Rendre les fonctions accessibles globalement
+        window.geocodeAddress = geocodeAddress;
+        window.geocodeAddresses = geocodeAddresses;
+
+        function resetSelection() {
+            // Supprimer les marqueurs de départ et d'arrivée
+            if (startPointMarker) {
+                map.removeLayer(startPointMarker);
+                startPointMarker = null;
+            }
+            if (endPointMarker) {
+                map.removeLayer(endPointMarker);
+                endPointMarker = null;
+            }
+
+            // Réinitialiser les points
+            startPoint = null;
+            endPoint = null;
+
+
+            // Supprimer les polylignes
+            polylines.forEach(polyline => map.removeLayer(polyline));
+            polylines = [];
+
+            // Supprimer les marqueurs des stations
+            stationMarkers.forEach(marker => map.removeLayer(marker));
+            stationMarkers = []; // Réinitialiser le tableau des marqueurs
+
+            // Réinitialiser les informations du bandeau
+            updateInfoBanner("Vélo", 0); // Remettre les valeurs par défaut (exemple : vélo et 0 g CO2)
+
+            console.log("Réinitialisation terminée.");
+        }
+
+        // Fonction pour tracer les itinéraires sur la carte
+        function drawPolyline(coords, color) {
+            if (coords.length === 0) {
+                console.error("No coordinates to draw.");
+                return;
+            }
+
+            console.log("Drawing polyline with the following details:");
+            console.log("Coordinates:", coords);
+            console.log("Color:", color);
+            // Draw the polyline on the map
+            var polyline = L.polyline(coords, { color: color || "blue", weight: 4 }).addTo(map);
+            polylines.push(polyline); // Ajouter la polyligne au tableau
+
+            // Adjust map view to fit the route
+            console.log("Polyline bounds:", polyline.getBounds());
+            map.fitBounds(polyline.getBounds());
+        }
+
+
+
+        function showAlert(message) {
+            alert(message);
+        }
+
+        function validatePoints() {
+            const mode = document.getElementById("modeSelector").value;
+
+            if (startPoint && endPoint) {
+                fetch('/find-routes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        start_lat: startPoint.lat,
+                        start_lng: startPoint.lng,
+                        end_lat: endPoint.lat,
+                        end_lng: endPoint.lng,
+                        mode: mode
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            const errorMessage = data.error || "Une erreur est survenue.";
+                            showAlert(errorMessage);
+                            throw new Error(errorMessage);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("API Response:", data);
+
+                    if (data.error) {
+                        showAlert(data.error);
+                        return;
+                    }
+
+                    if (data.routes.walk_to_start) {
+                        drawPolyline(data.routes.walk_to_start.map(coord => [coord[0], coord[1]]), "blue");
+                    }
+                    if (data.routes.bike_route) {
+                        drawPolyline(data.routes.bike_route.map(coord => [coord[0], coord[1]]), "green");
+                    }
+                    if (data.routes.public_transport_route) {
+                        drawPolyline(data.routes.public_transport_route.map(coord => [coord[0], coord[1]]), "green");
+                    }
+                    if (data.routes.walk_to_end) {
+                        drawPolyline(data.routes.walk_to_end.map(coord => [coord[0], coord[1]]), "red");
+                    }
+
+                    // Update station information with predicted values
+                    if (mode === "bike") {
+                        if (data.start_station) {
+                            const marker = L.marker([data.start_station.latitude, data.start_station.longitude]).addTo(map)
+                                .bindPopup(`<b>${data.start_station.name}</b><br>Vélos disponibles (prévision) : ${data.start_station.available_bikes}<br>Places libres : ${data.start_station.available_stands}`);
+                            stationMarkers.push(marker);
+                        }
+                        if (data.end_station) {
+                            const marker = L.marker([data.end_station.latitude, data.end_station.longitude]).addTo(map)
+                                .bindPopup(`<b>${data.end_station.name}</b><br>Vélos disponibles : ${data.end_station.available_bikes}<br>Places libres (prévision) : ${data.end_station.available_stands}`);
+                            stationMarkers.push(marker);
+                        }
+                    } else if (mode === "bus") {
+                        if (data.start_stop) {
+                            const marker = L.marker([data.start_stop.latitude, data.start_stop.longitude]).addTo(map)
+                                .bindPopup(`<b>${data.start_stop.name}</b>`).openPopup();
+                            stationMarkers.push(marker);
+                        }
+                        if (data.end_stop) {
+                            const marker = L.marker([data.end_stop.latitude, data.end_stop.longitude]).addTo(map)
+                                .bindPopup(`<b>${data.end_stop.name}</b>`).openPopup();
+                            stationMarkers.push(marker);
+                        }
+                    }
+
+                    // Mettre à jour le bandeau d'informations
+                    updateInfoBanner(data.transport_mode, data.co2_emissions || 0);
+                })
+                .catch(err => {
+                    console.error("Erreur lors de l'envoi des données :", err);
+                    showAlert("Nous n'avons pas trouvé de ligne de transport en commun qui lie les deux adresses.");
+                });
+            } else {
+                showAlert("Veuillez sélectionner les deux points ou saisir des adresses.");
+            }
+        }
+
+        var validateButton = L.control({ position: 'topright' });
+        validateButton.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'validate-button');
+            div.innerHTML = '<button onclick="validatePoints()">Valider les points</button>';
+            return div;
+        };
+
+        validateButton.addTo(map);
+
+        // Fonction pour mettre à jour le bandeau d'informations
+        function updateInfoBanner(transport_mode, emissions) {
+            const transportModeElement = document.getElementById('transportMode');
+            const co2EmissionsElement = document.getElementById('co2Emissions');
+            const transportIconElement = document.getElementById('transportIcon');
+
+            // Mettre à jour les informations du trajet
+            transportModeElement.textContent = `Mode de transport : ${transport_mode === "bike" ? "Vélo" : `${transport_mode}`}`;
+            co2EmissionsElement.textContent = `Émissions de CO2 : ${transport_mode === 'bike' ? '0 g' : `${emissions.toFixed(2)} g`}`;
+
+            // Mise à jour de l'icône
+            if (transport_mode === 'bike') {
+                transportIconElement.innerHTML = '<i class="fas fa-bicycle"></i>';
+            } else if (transport_mode === 'bus') {
+                transportIconElement.innerHTML = '<i class="fas fa-bus"></i>';
+            }
+        }
+
+        let waterMarkers = [];
+        let preloadedWaterData = null; // Variable pour stocker les données des points d'eau
+
+        async function fetchDrinkingWater() {
+            try {
+                const response = await fetch('/api/drinking_water');
+                if (!response.ok) throw new Error('Failed to fetch drinking water points');
+                const data = await response.json();
+                preloadedWaterData = data;
+                displayDrinkingWater(data);
+            } catch (error) {
+                console.error('Error fetching drinking water points:', error);
+            }
+        }
+
+        function displayDrinkingWater(data) {
+            clearDrinkingWaterMarkers(); // Clear existing markers
+            data.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: L.icon({
+                        iconUrl: 'static/imgs/water-drop.png',
+                        iconSize: [24, 24], // Adjust size as needed
+                        iconAnchor: [12, 12],
+                    })
+                }).addTo(map).bindPopup('Point d\'eau');
+                waterMarkers.push(marker);
+            });
+        }
+
+        function clearDrinkingWaterMarkers() {
+            waterMarkers.forEach(marker => map.removeLayer(marker));
+            waterMarkers = [];
+        }
+
+        // Précharger les données des points d'eau au chargement de la page
+        async function preloadDrinkingWater() {
+            try {
+                const response = await fetch('/api/drinking_water');
+                if (!response.ok) throw new Error('Failed to fetch drinking water points');
+                preloadedWaterData = await response.json();
+                console.log('Drinking water points preloaded successfully.');
+            } catch (error) {
+                console.error('Error preloading drinking water points:', error);
+            }
+        }
+
+        // Utiliser les données préchargées pour afficher les marqueurs
+        function displayPreloadedDrinkingWater() {
+            if (preloadedWaterData) {
+                displayDrinkingWater(preloadedWaterData);
+            } else {
+                fetchDrinkingWater();
+            }
+        }
+
+        // Charger les données des points d'eau au démarrage
+        window.onload = function () {
+            restoreCoordinates();
+            prefillEndAddress();
+
+            const modeSelector = document.getElementById('modeSelector');
+            const currentMode = modeSelector.value;
+
+            // Si le mode n'est pas "bike", effacer les marqueurs d'eau
+            if (currentMode !== 'bike') {
+                clearDrinkingWaterMarkers();
+            } else {
+                preloadDrinkingWater();
+                displayPreloadedDrinkingWater(); // Affiche les marqueurs si le mode est "bike"
+            }
+        };
+
+        // Écouter les changements de mode et afficher ou masquer les marqueurs
+        document.getElementById('modeSelector').addEventListener('change', function () {
+            const mode = this.value;
+            if (mode === 'bike') {
+                displayPreloadedDrinkingWater(); // Utilise les données préchargées
+            } else {
+                clearDrinkingWaterMarkers();
+            }
+        });
+
+        </script>
+    </body>
+</html>

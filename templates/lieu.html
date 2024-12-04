@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Solution de l'équipe 'Les CNP du Grand Est' - Plateforme qui promeut le patrimoine normand et le tourisme durable" />
+    <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+    <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+    <title>Normand'Go - {{ lieu['NOM'] }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet" />
+    <style>
+        .map-container {
+            height: auto;
+            width: 100%;
+        }
+        .accessibility-info ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .accessibility-info ul li {
+            margin-bottom: 10px;
+        }
+    </style>
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body class="sb-nav-fixed">
+    {% include 'common/header.html' %}
+    {% include 'common/sidebar.html' %}
+
+    <div id="layoutSidenav_content">
+        <main>
+            <div class="custom-header">
+                {{ lieu['NOM'] }}
+            </div>
+            <div class="container-fluid px-4">
+                <p class="lead">
+                    <br>
+                    {{ lieu['DESCRIPTIF'] }}
+                </p>
+    
+                {% if lieu['ADDR'] %}
+                    <p class="font-weight-bold">Adresse : {{ lieu['ADDR'] }}</p>
+                {% endif %}
+    
+                <div class="row">
+                    <div class="col-md-6">
+                        {% set photo_string = lieu['PHOTO']|ensure_string %}
+                        {% if photo_string %}
+                            <div id="photoCarousel" class="carousel slide" data-ride="carousel">
+                                <div class="carousel-inner">
+                                    {% for photo in photo_string.split(' ## ') %}
+                                        <div class="carousel-item {% if loop.index == 1 %}active{% endif %}">
+                                            <img src="{{ photo }}" class="d-block w-100 img-fluid rounded" alt="Photo de {{ lieu['NOM'] }}">
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <a class="carousel-control-prev" href="#photoCarousel" role="button" data-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="sr-only">Previous</span>
+                                </a>
+                                <a class="carousel-control-next" href="#photoCarousel" role="button" data-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="sr-only">Next</span>
+                                </a>
+                            </div>
+                        {% else %}
+                            <img src="{{ url_for('static', filename='imgs/no_photo.jpg') }}" class="d-block w-100 img-fluid rounded" alt="Aucune photo disponible">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <div id="map" class="map-container"></div>
+                    </div>
+                </div>
+
+                <!-- Accessibility Information -->
+                <div class="accessibility-info mt-4">
+                    <h2>Informations d'accessibilité</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul>
+                                {% set titles = {
+                                    'transport_station_presence': 'Présence de station de transport',
+                                    'stationnement_presence': 'Présence de stationnement',
+                                    'stationnement_pmr': 'Stationnement PMR',
+                                    'entree_ascenseur': 'Entrée avec ascenseur',
+                                    'entree_pmr': 'Entrée PMR',
+                                    'accueil_personnels': 'Accueil par le personnel',
+                                    'accueil_audiodescription_presence': 'Présence d\'audio-description',
+                                    'accueil_audiodescription': 'Audio-description'
+                                } %}
+                                {% set icons = {
+                                    'transport_station_presence': 'fa-train',
+                                    'stationnement_presence': 'fa-parking',
+                                    'stationnement_pmr': 'fa-wheelchair',
+                                    'entree_ascenseur': 'fa-elevator',
+                                    'entree_pmr': 'fa-wheelchair',
+                                    'accueil_personnels': 'fa-info-circle',
+                                    'accueil_audiodescription_presence': 'fa-headphones-alt',
+                                    'accueil_audiodescription': 'fa-headphones'
+                                } %}
+                                {% for key, value in accessibility_info.items() %}
+                                    {% if loop.index <= 8 %}
+                                        <li><i class="fa {{ icons[key] }}" aria-hidden="true"></i> <strong>{{ titles[key] }}:</strong> {{ value if value else 'Non disponible' }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul>
+                                {% set titles_right = {
+                                    'accueil_equipements_malentendants_presence': 'Présence d\'équipements pour malentendants',
+                                    'sanitaires_presence': 'Présence de sanitaires',
+                                    'sanitaires_adaptes': 'Sanitaires adaptés',
+                                    'labels': 'Labels',
+                                    'labels_familles_handicap': 'Labels pour familles handicapées'
+                                } %}
+                                {% set icons_right = {
+                                    'accueil_equipements_malentendants_presence': 'fa-deaf',
+                                    'sanitaires_presence': 'fa-restroom',
+                                    'sanitaires_adaptes': 'fa-restroom',
+                                    'labels': 'fa-tags',
+                                    'labels_familles_handicap': 'fa-users'
+                                } %}
+                                {% for key, value in accessibility_info.items() %}
+                                    {% if loop.index > 8 %}
+                                        <li><i class="fa {{ icons_right[key] }}" aria-hidden="true"></i> <strong>{{ titles_right[key] }}:</strong> {{ value if value else 'Non disponible' }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {% include 'common/footer.html' %}
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Leaflet JS for map rendering, if you are using Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map
+            var map = L.map('map').setView([{{ lieu['LATITUDE'] }}, {{ lieu['LONGITUDE'] }}], 14);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add a marker for the place
+            L.marker([{{ lieu['LATITUDE'] }}, {{ lieu['LONGITUDE'] }}]).addTo(map)
+                .bindPopup('<b>{{ lieu['NOM'] }}</b><br>{{ lieu['ADDR'] }}')
+                .openPopup();
+        });
+    </script>
+</body>
+</html>
