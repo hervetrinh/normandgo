@@ -1,6 +1,6 @@
 import os
 import sys
-import yaml
+# import yaml
 import re
 import datetime
 import logging
@@ -24,14 +24,9 @@ from recommander import RecommendationSystem
 from route_finder_app import RouteFinderApp  
 from llm_utils import LLMUtils
 from verbatims import VerbatimClassifier
+from config import config
+from pathlib import Path
 
-# Load configuration
-with open(os.path.join(os.path.dirname(__file__), 'config', 'config.yaml'), 'r') as file:
-    config = yaml.safe_load(file)
-
-# Load prompts
-with open(os.path.join(os.path.dirname(__file__), 'config', 'prompts.yaml'), 'r') as file:
-    prompts = yaml.safe_load(file)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -54,15 +49,21 @@ lieux_visite = data_processor.process_addresses()
 resto = pd.read_excel("data/Restaurants.xlsx")
 
 # Initialize recommender system
+embeddings_file_path = 'data/saved_embeddings.pkl'
+
 recommender = RecommendationSystem(
-    embedding_model_name="sentence-transformers/all-MiniLM-L6-v2", 
-    data=lieux_visite, 
-    config_path='config/config.yaml'
+    embedding_model_name="models/all-MiniLM-L6-v2",
+    data=lieux_visite,
+    embeddings_path=embeddings_file_path
 )
-logging.info('Processing recommender system...')
-recommender.preprocess_data()
-logging.info('Extracting features for recommender system...')
-recommender.extract_features()
+
+if not Path(embeddings_file_path).exists():
+    logging.info("Calculating and saving embeddings...")
+    recommender.preprocess_data()
+    recommender.extract_features()
+else:
+    logging.info("Loading precomputed embeddings...")
+    recommender.load_embeddings()
 
 # Initialize utility classes
 collection_utils = CollectionUtils()
@@ -72,7 +73,7 @@ openagenda = OpenAgendaEvents(config['openagenda']['api_key'], config['openagend
 rag_agent = RAGAgent(
     embedding_model_name=config['embedding_model']['name'],
     data_path=config['data']['datatour_file'],
-    prompts=prompts['llm']
+    prompts=config["prompts"]['llm']
 )
 
 lieux_76 = pd.read_csv("data/lieux_76.csv", sep=";")
@@ -547,4 +548,4 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 if __name__ == '__main__':
-    app.run(debug=config['app']['debug'], port=config['app']['port'])
+    app.run()

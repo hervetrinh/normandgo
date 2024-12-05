@@ -2,25 +2,25 @@ import requests
 import pandas as pd
 from datetime import datetime
 import logging
-import yaml
+from config import config 
 
 
 class OpenAgendaEvents:
     def __init__(self, api_key, agenda_uids):
         """
-        Initialize the OpenAgendaEvents class with the API key and agenda UIDs.
+        Initialise la classe OpenAgendaEvents avec l'API key et les UIDs des agendas.
         
-        :param api_key: OpenAgenda public API key.
-        :param agenda_uids: List of agenda UIDs.
+        :param api_key: Clé API publique d'OpenAgenda.
+        :param agenda_uids: Liste des UIDs des agendas.
         """
         self.api_key = api_key
         self.agenda_uids = agenda_uids
 
     def fetch_events(self):
         """
-        Retrieve upcoming events for a list of agendas via the OpenAgenda API.
+        Récupère les événements à venir pour une liste d'agendas via l'API OpenAgenda.
 
-        :return: DataFrame containing event information.
+        :return: DataFrame contenant les informations sur les événements.
         """
         current_date = datetime.now().isoformat()
         events_list = []
@@ -29,9 +29,9 @@ class OpenAgendaEvents:
             events_url = f'https://api.openagenda.com/v2/agendas/{uid}/events'
             params = {
                 'key': self.api_key,
-                'timings[gte]': current_date,  # Events from today
-                'size': 100,  # Maximum number of events to retrieve per call
-                'detailed': 1  # Get detailed information for each event
+                'timings[gte]': current_date,
+                'size': 100,
+                'detailed': 1
             }
 
             while True:
@@ -46,11 +46,10 @@ class OpenAgendaEvents:
                     else:
                         break
                 else:
-                    logging.error(f"Error retrieving events for agenda UID {uid}: {response.status_code}")
+                    logging.error(f"Erreur lors de la récupération des événements pour UID {uid}: {response.status_code}")
                     break
 
-        df_openag = pd.json_normalize(events_list)
-        return df_openag
+        return pd.json_normalize(events_list)
 
 
 if __name__ == "__main__":
@@ -60,24 +59,21 @@ if __name__ == "__main__":
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    with open("config/config.yaml", 'r') as file:
-        config = yaml.safe_load(file)
-
     api_key = config['openagenda']['api_key']
     agenda_uids = config['openagenda']['agenda_uids']
 
-    logging.info("Initializing OpenAgendaEvents...")
+    logging.info("Initialisation de OpenAgendaEvents...")
     openagenda = OpenAgendaEvents(api_key, agenda_uids)
 
-    logging.info("Fetching events...")
+    logging.info("Récupération des événements...")
     events_df = openagenda.fetch_events()
 
     cols = ['title.fr', 'description.fr', 'location.longitude', 'location.latitude', 'location.address', 'firstTiming.begin', 'lastTiming.end']
 
     if not events_df.empty:
-        logging.info("Events fetched successfully!")
-        logging.info("Dep 76 only for the MVP")
-        events_df[events_df['location.postalCode'].str[:2] == '76'][cols].drop_duplicates(subset=['title.fr', 'description.fr']).to_csv("data/agenda.csv", sep=";")
+        logging.info("Événements récupérés avec succès !")
+        logging.info("Filtrage des événements pour le département 76...")
+        events_df = events_df[events_df['location.postalCode'].str[:2] == '76'][cols]
+        events_df.drop_duplicates(subset=['title.fr', 'description.fr']).to_csv("data/agenda.csv", sep=";")
     else:
-        logging.info("No events found.")
-        
+        logging.info("Aucun événement trouvé.")

@@ -1,12 +1,10 @@
 import pandas as pd
-import yaml
+from config import config  # Importation du fichier config.py
 
 
 class CollectionUtils:
-    def __init__(self, config_path="config/config.yaml"):
-        with open(config_path, "r") as file:
-            self.config = yaml.safe_load(file)
-
+    def __init__(self):
+        self.config = config
         self.users_file = self.config['collection']["database"]["users_file"]
         self.badges_info = self.config['collection']["badges"]
         self.tiers = self.config['collection']["tiers"]

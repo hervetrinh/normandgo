@@ -6,6 +6,7 @@ import numpy as np
 import re
 from langchain_openai import AzureChatOpenAI
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -66,33 +67,30 @@ class LLMUtils:
 
     def load_files(self):
         """
-        Load data files and create vectors for the descriptions.
-
-        :return: DataFrame of events, FAISS index, and embedding model.
+        Charge les fichiers de données ou les vecteurs s'ils sont déjà sauvegardés.
         """
-        if not self.data_path:
-            raise ValueError("Data path is not provided.")
-        if not self.embedding_model:
-            raise ValueError("Embedding model name is not provided.")
+        try:
+            return self.load_embeddings()
+        except FileNotFoundError:
+            logging.info("Aucun fichier d'embeddings trouvé, génération en cours...")
+            files = [self.data_path]
+            dataframes = [pd.read_excel(file) for file in files]
+            all_events_df = pd.concat(dataframes, ignore_index=True)
 
-        files = [self.data_path]
-        dataframes = [pd.read_excel(file) for file in files]
-        all_events_df = pd.concat(dataframes, ignore_index=True)
+            def combine_columns(row):
+                return f"""{row['DESCRIPTIF']} {row.get('COMMUNE', '')} {row.get('CODEPOSTAL', '')} {row.get('ADRESSE1', '')}
+                {row.get('ENVIES', '')} {row.get('EQUIPEMENTS', '')} {row.get('TYPE', '')}"""
 
-        def combine_columns(row):
-            return f"""{row['DESCRIPTIF']} {row.get('COMMUNE', '')} {row.get('CODEPOSTAL', '')} {row.get('ADRESSE1', '')}
-        {row.get('ENVIES', '')} {row.get('EQUIPEMENTS', '')} {row.get('TYPE', '')}"""
+            all_events_df['combined_text'] = all_events_df.apply(combine_columns, axis=1)
+            all_events_df['vector'] = all_events_df['combined_text'].apply(lambda x: self.embedding_model.encode(str(x)))
+            
+            vectors = np.vstack(all_events_df['vector'].values)
+            dimension = vectors.shape[1]
+            index = faiss.IndexFlatL2(dimension)
+            index.add(vectors)
 
-        all_events_df['combined_text'] = all_events_df.apply(combine_columns, axis=1)
-        all_events_df['vector'] = all_events_df['combined_text'].apply(lambda x: self.embedding_model.encode(str(x)))
-
-        vectors = all_events_df['vector'].tolist()
-        dimension = len(vectors[0])
-        index = faiss.IndexFlatL2(dimension)
-        vectors_array = np.array(vectors, dtype='float32')
-        index.add(vectors_array)
-
-        return all_events_df, index, self.embedding_model
+            self.save_embeddings(all_events_df, index)  # Sauvegarde des données
+            return all_events_df, index, self.embedding_model
 
     @staticmethod
     def extract_location(query, known_locations):
@@ -168,3 +166,23 @@ class LLMUtils:
 
         results = results.sort_values(by='combined_score').head(top_k)
         return results
+    
+    def save_embeddings(self, df, index, embedding_file='embeddings.npy', index_file='faiss_index.bin'):
+        """
+        Sauvegarde les embeddings et l'index FAISS sur disque.
+        """
+        df.to_pickle('data/events.pkl')  # Sauvegarde des données
+        np.save(embedding_file, np.vstack(df['vector'].values))  # Sauvegarde des vecteurs d'embeddings
+        faiss.write_index(index, index_file)  # Sauvegarde de l'index FAISS
+
+    def load_embeddings(self, embedding_file='embeddings.npy', index_file='faiss_index.bin'):
+        """
+        Charge les embeddings et l'index FAISS depuis le disque.
+        """
+        if os.path.exists('data/events.pkl') and os.path.exists(embedding_file) and os.path.exists(index_file):
+            df = pd.read_pickle('data/events.pkl')  # Chargement des données
+            embeddings = np.load(embedding_file)  # Chargement des vecteurs d'embeddings
+            index = faiss.read_index(index_file)  # Chargement de l'index FAISS
+            return df, index, self.embedding_model
+        else:   
+            raise FileNotFoundError("Fichiers d'embeddings ou d'index non trouvés.")
