@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Solution de l'équipe 'Les CNP du Grand Est' - Plateforme qui promeut le patrimoine normand et le tourisme durable" />
+    <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+    <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+    <title>Normand'Go - Recommandations</title>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet" />
+    <style>
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform .2s;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        .card-img-top {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .card-title {
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #555;
+        }
+        
+    </style>
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body class="sb-nav-fixed">
+    {% include 'common/header.html' %}
+    {% include 'common/sidebar.html' %}
+
+    <div id="layoutSidenav_content">
+        <main>
+            <div class="custom-header">
+                Recommandations
+            </div>
+            
+            <div class="container-fluid px-4">
+                <br>
+                <div>
+                    <h5>Parce que vous avez visité :
+                        <a href="{{ url_for('lieu', tsid=tsid) }}">{{ ref_name }}</a>
+                    </h5>
+                </div>
+                <br>
+                
+                <div class="row">
+                    {% for rec in recommendations %}
+                        <div class="col-lg-6 col-md-6 col-sm-12 mb-4">
+                            <div class="card">
+                                <a href="{{ url_for('lieu', tsid=rec['TSID']) }}">
+                                    <img src="{{ rec['PHOTO'] }}" class="card-img-top" alt="{{ rec['NOM'] }}">
+                                </a>
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ rec['NOM'] }}</h5>
+                                    <p class="card-text">Distance: {{ rec['DISTANCE_METERS'] | round(2) }} mètres</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </main>
+        {% include 'common/footer.html' %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+</body>
+</html>

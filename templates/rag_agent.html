@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Chatbot Touristique Normandie" />
+    <meta name="author" content="Rémi BALSAMO et Hervé TRINH" />
+    <link rel="icon" href="{{ url_for('static', filename='imgs/logo.png') }}" type="image/x-icon">
+    <title>Normand'Go - IA Conversationnelle Touristique</title>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.10/marked.min.js" integrity="sha512-1kG0sEHX5j+BBGH5lFhF9bF5+Fq3Fh7+F+1Wb5D0i3YTW6p2J6g/ZLx6+5F5Erx2c1hT+R+MyX5zF2w9zVvM6A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+
+    <style>
+        .chat-container {
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            padding: 10px;
+            background-color: white;
+            color: black;
+            text-align: left;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .chat-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .message {
+            display: inline-block; /* Change block to inline-block */
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #e8f0fe;
+            margin-left: auto;
+            text-align: right;
+            align-self: flex-end; /* Align user message to the right */
+        }
+
+        .bot-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            text-align: left;
+            align-self: flex-start; /* Align bot message to the left */
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            align-self: flex-start;
+        }
+
+        .typing-indicator .dot {
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background-color: #bbb;
+            border-radius: 50%;
+            animation: blink 1.4s infinite both;
+        }
+
+        .typing-indicator .dot:nth-child(1) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator .dot:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+
+        .typing-indicator .dot:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 0.2;
+            }
+            20% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.2;
+            }
+        }
+
+
+        .chat-footer {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+            font-size: 1em;
+        }
+        .send-button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .send-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body class="sb-nav-fixed">
+    {% include 'common/header.html' %}
+    {% include 'common/sidebar.html' %}
+
+    <div id="layoutSidenav_content">
+        
+        <div class="chat-container">
+            <div class="chat-header">IA conversationnelle</div>
+            <div id="chatBody" class="chat-body" style="display: flex; flex-direction: column;">
+                <!-- Messages will be dynamically added here -->
+            </div>
+            <div class="chat-footer">
+                <input id="chatInput" type="text" class="chat-input" placeholder="Posez votre question...">
+                <button id="sendButton" class="send-button">Envoyer</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const chatBody = document.getElementById("chatBody");
+        const chatInput = document.getElementById("chatInput");
+        const sendButton = document.getElementById("sendButton");
+
+        function addMessage(content, isUser = true) {
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("message");
+            messageDiv.classList.add(isUser ? "user-message" : "bot-message");
+            messageDiv.innerHTML = marked.parse(content);
+            chatBody.appendChild(messageDiv);
+            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to the latest message
+        }
+
+        function addTypingIndicator() {
+            const typingIndicatorDiv = document.createElement("div");
+            typingIndicatorDiv.classList.add("message");
+            typingIndicatorDiv.classList.add("bot-message");
+            typingIndicatorDiv.classList.add("typing-indicator");
+            typingIndicatorDiv.innerHTML = `
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            `;
+            chatBody.appendChild(typingIndicatorDiv);
+            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to the latest message
+        }
+
+        async function sendMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+
+            // Add user message to the chat
+            addMessage(query, true);
+
+            // Clear the input field
+            chatInput.value = "";
+
+            // Add typing indicator
+            addTypingIndicator();
+
+            // Call the backend API
+            const response = await fetch("/api/rag_agent", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ query }),
+            });
+
+            // Remove typing indicator
+            chatBody.lastChild.remove();
+
+            console.log(response);
+            if (response.ok) {
+                const data = await response.json();
+                const botResponse = data.response;
+                addMessage(botResponse, false);
+            } else {
+                addMessage("Une erreur est survenue. Veuillez réessayer.", false);
+            }
+        }
+
+        sendButton.addEventListener("click", sendMessage);
+
+        chatInput.addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>

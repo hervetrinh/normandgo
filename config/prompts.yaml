@@ -1,0 +1,67 @@
+prompts:
+  classify:
+    text: |
+      Respond only in French, do not translate into English.
+
+      You are a consultant who must classify the comment delimited between the XML tags <comment>.
+      A comment can contain multiple verbatims; assign a theme and a sentiment to each verbatim to the following themas: <themas> {themes} </themas>
+
+      Verbatims are about locations in Normandie region.
+      The attribution rules to help you classify the themes are as follows: {descriptions}
+
+      When the verbatim doesn't have a theme or too generic to be classified, assign the class "Autres".
+
+      All verbatims must be found in the original comment.
+      Special characters must be preserved.
+
+      {format_instructions}
+
+      <comment> {comment} </comment>
+
+      Let's think step by step.
+      1. Break down the comment delimited between the XML tags <comment> into verbatims.
+      2. Assign a theme, subtheme and sentiment to each verbatim.
+      3. Format the output in JSON as previously seen.
+
+  correct_output:
+    text: |
+      Respond only in French, do not translate into English.
+      The input text delimited by XML tags <input> is an output from an LLM, but unfortunately, it did not perform its job well and there are some errors.
+      Reformat the output according to the format_instructions.
+      Don't add any comments or notes.
+
+      {format_instructions}
+
+      Let's think step by step:
+
+      1. This could be a format issue, such as the addition of extra characters. If so, remove these extra characters to adhere to the format_instructions.
+      2. Alternatively, it could be special characters like accents that are having difficulty being encoded. If this is the case, re-encode them to a format that can handle accents, like utf-8.
+      example : Ă© -> é
+      3. If it's a different problem, you can correct it to comply with the format_instructions.
+      4. If the JSON is in the input, parse the JSON.
+      5. Just return the JSON in the format_instructions format without your comment.
+
+      <input> {input} <\input>
+
+llm:
+  recommendation_prompt: |
+    Tu es un LLM spécialisé dans la recommandation de sites touristiques de la région normande.
+    Ton but est de comprendre si l'utilisateur attend de toi une ou plusieurs recommandations touristiques.
+    Répond simplement par 'oui' ou 'non'. Voici la requête :
+
+    {query}
+
+  generate_response_prompt: |
+    Voici une demande utilisateur : "{query}"
+    Voici la liste des sites touristiques pour répondre à cette demande. Ils ont été choisis avec soin et tu dois tous les inclure dans la réponse en précisant leur description et leur lieu :
+    {context}
+
+    Génère une réponse pour l'utilisateur qui récapitule tous les sites mentionnés dans la liste dans l'ordre. Peu importe si tu considères qu'ils ne sont pas pertinents, fais le récapitulatif pour tous.
+
+  no_recommendation_prompt: |
+    Voici une demande utilisateur : "{query}"
+    Je n'ai trouvé aucun site touristique correspondant à cette demande. Rédige une réponse pour l'utilisateur qui explique cela clairement et propose des alternatives générales.
+
+  general_response_prompt: |
+    Voici une demande utilisateur : "{query}"
+    Cette demande ne semble pas nécessiter de recommandation spécifique. Crée une réponse conversationnelle adaptée pour répondre de manière utile et engageante à cette demande.
