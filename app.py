@@ -371,10 +371,17 @@ def charts():
         'updated_at': now_str
     }
 
+    synthesis = "Chargement en cours..."
+
+    return render_template('charts.html', name=name, chart_data=chart_data, synthesis=synthesis)
+
+@app.route('/synthesis', methods=['GET'])
+def generate_synthesis():
     try:
+        df = pd.read_csv('data/verbatims.csv', delimiter=';')
         verbs = ";".join(df.feedback.values)
         synthesis = llm.invoke(f"""      
-                            Answer only in French, not in English. Analyze the verbatims about places to visit found between the XML tags <verbatim>. These verbatims are delimited by semicolons, and people discuss the following themes
+                            Answer only in French, not in English. Analyze the verbatims about all the places to visit found between the XML tags <verbatim>. These verbatims are delimited by semicolons, and people discuss the following themes
                                 - Historical and cultural heritage,
                                 - Landscapes and nature,
                                 - Activities and leisure,
@@ -391,10 +398,9 @@ def charts():
                             Provide a summary in French, using a maximum of three sentences (negative and positive).
                             <verbatim> {verbs} </verbatim>
                             """).content
-    except:
+    except Exception:
         synthesis = "Une erreur s'est produite"
-
-    return render_template('charts.html', name=name, chart_data=chart_data, synthesis=synthesis)
+    return {"synthesis": synthesis}
 
 @app.route('/agenda')
 def agenda():
@@ -439,8 +445,11 @@ def serve_rag_agent():
 def rag_api():
     data = request.json
     query = data.get("query", "")
-    response, _ = rag_agent.rag_agent(query)
-    return jsonify({"response": response})
+    try:
+        response, _ = rag_agent.unified_query(query)
+        return jsonify({"response": response})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/tiers/<user_id>", methods=["GET"])
 def get_tiers(user_id):

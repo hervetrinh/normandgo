@@ -119,8 +119,17 @@
                                     Synthèse des verbatims
                                 </div>
                                 <div class="card-body">
-                                    {{synthesis}}
+                                    <div id="loading-animation">
+                                        <p>Chargement de la synthèse...</p>
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                    </div>
+                                    <div id="synthesis-content" style="display:none;">
+                                        {{ synthesis }}
+                                    </div>
                                 </div>
+                                
                                 <div class="card-footer small text-muted">Mis à jour le {{ chart_data.updated_at }}</div>
                             </div>
                             * Les données sont fictives et ont pour but de démonstration.
@@ -328,6 +337,24 @@
                         }]
                     }
                 }
+            });
+
+            document.addEventListener("DOMContentLoaded", function() {
+                fetch('/synthesis')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById("loading-animation").style.display = "none";
+                        const synthesisContent = document.getElementById("synthesis-content");
+                        synthesisContent.style.display = "block";
+                        synthesisContent.textContent = data.synthesis;
+                    })
+                    .catch(error => {
+                        console.error("Erreur lors du chargement de la synthèse :", error);
+                        document.getElementById("loading-animation").style.display = "none";
+                        const synthesisContent = document.getElementById("synthesis-content");
+                        synthesisContent.style.display = "block";
+                        synthesisContent.textContent = "Une erreur s'est produite lors du chargement de la synthèse.";
+                    });
             });
         </script>
     </body>

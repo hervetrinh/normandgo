@@ -352,7 +352,7 @@
                     progressBar.appendChild(step);
                 });
 
-                const stepWidth = 100 / (totalTiers - 1);
+                const stepWidth = totalTiers > 1 ? 100 / (totalTiers - 1) : 100;
                 const indicatorPosition = currentTierIndex >= 0
                     ? Math.min(currentTierIndex * stepWidth, 100)
                     : 0;
