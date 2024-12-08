@@ -37,6 +37,18 @@
             <div class="container-fluid px-4">
                 <h1 class="mt-4">Table des Feedbacks</h1>
 
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div>
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}" role="alert">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
                 <div class="card mb-4">
                     <div class="card-body">
                         Voici un tableau des feedbacks des utilisateurs pour les différents monuments en Normandie. Les feedbacks négatifs sont en rouge, les positifs en vert et les neutres en gris.
@@ -53,18 +65,18 @@
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
-                                            <th>Username</th>
-                                            <th>Longitude</th>
-                                            <th>Latitude</th>
-                                            <th>Lieu</th>
-                                            <th>Commentaire complet</th>
-                                            <th>Verbatim</th>
-                                            <th>Thème</th>
-                                            <th>Sentiment</th>
+                                        <th>Username</th>
+                                        <th>Longitude</th>
+                                        <th>Latitude</th>
+                                        <th>Lieu</th>
+                                        <th>Commentaire complet</th>
+                                        <th>Verbatim</th>
+                                        <th>Thème</th>
+                                        <th>Sentiment</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for row in table_data %}
+                                    {% for row in table_data|reverse %}
                                         <tr class="{% if row['sentiment'] == 'Positif' %}positive{% elif row['sentiment'] == 'Négatif' %}negative{% else %}neutral{% endif %}">
                                             <td>{{ row['USERNAME'] }}</td>
                                             <td>{{ row['LONGITUDE'] }}</td>
@@ -85,6 +97,10 @@
                             {% else %}
                                 <button class="btn btn-primary" disabled>Précédent</button>
                             {% endif %}
+                            <!-- Bouton Reset -->
+                            <form action="{{ url_for('reset_feedback_file') }}" method="post" style="margin: 0;">
+                                <button class="btn btn-danger" type="submit">Reset</button>
+                            </form>
                             {% if next_url %}
                                 <a class="btn btn-primary" href="{{ next_url }}">Suivant</a>
                             {% else %}

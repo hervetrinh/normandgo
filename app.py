@@ -7,6 +7,8 @@ import logging
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from langchain_openai import AzureChatOpenAI
+import shutil
+from flask import flash
 
 
 # Add the utils directory to the system path
@@ -183,7 +185,7 @@ def tables():
     name = session.get('name', 'Guest')
 
     if os.path.isfile(config['data']['feedback_file']):
-        df = pd.read_csv(config['data']['feedback_file'])
+        df = pd.read_csv(config['data']['feedback_file'], sep=";")
     else:
         df = pd.DataFrame(columns=['USERNAME', 'LONGITUDE', 'LATITUDE', 'NOM', 'FEEDBACK', 'verbatim', 'theme', 'sentiment'])
 
@@ -200,6 +202,17 @@ def tables():
     prev_url = f"/tables?page={page - 1}" if start > 0 else None
 
     return render_template('tables.html', table_data=paginated_data, next_url=next_url, prev_url=prev_url, name=name)
+
+@app.route('/reset_feedback_file', methods=['POST'])
+def reset_feedback_file():
+    current_file = config['data']['feedback_file']  
+    backup_file = os.path.join('data', 'custom_verbatims_bak.csv')
+    try:
+        shutil.copy(backup_file, current_file)
+        flash('Le fichier des feedbacks a été réinitialisé avec succès.', 'success')
+    except Exception as e:
+        flash(f'Erreur lors de la réinitialisation : {e}', 'danger')
+    return redirect(url_for('tables'))
 
 @app.route('/feedback', methods=['POST'])
 def feedback():
@@ -227,11 +240,18 @@ def feedback():
     feedback_df.drop(columns=['verbatims'], inplace=True)
     
     if os.path.isfile(feedback_file):
-        feedback_df.to_csv(feedback_file, mode='a', header=False, index=False)
+        with open(feedback_file, 'r') as f:
+            first_line = f.readline()
+            if first_line.strip():  
+                feedback_df.to_csv(feedback_file, mode='a', header=False, index=False, sep=";")
+            else:
+                feedback_df.to_csv(feedback_file, mode='w', header=True, index=False, sep=";")
     else:
-        feedback_df.to_csv(feedback_file, mode='w', header=True, index=False)
+        # Si le fichier n'existe pas, création avec en-tête
+        feedback_df.to_csv(feedback_file, mode='w', header=True, index=False, sep=";")
     
     return jsonify({'status': 'success'})
+
 
 @app.route('/login', methods=['POST'])
 def do_login():
@@ -560,6 +580,11 @@ def search():
     else:
         suggestions = []
     return jsonify(suggestions)
+
+@app.route('/api/drinking_water', methods=['GET'])
+def get_drinking_water():
+    geojson_data = drinking_water.fetch_drinking_water()
+    return jsonify(geojson_data)
 
 @app.errorhandler(404)
 def page_not_found(e):
