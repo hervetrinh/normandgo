@@ -1,7 +1,3 @@
-app:
-  debug: false
-  port: 10030
-
 # Columns to combine for feature extraction
 combined_features_columns:
   - NOM
@@ -15,7 +11,7 @@ alpha: 0.5
 
 data:
   lieux_visite_path: "data/Lieux de visite.xlsx"
-  feedback_file: "data/custom_verbatims.csv"
+  feedback_file: "data/custom_verbatims.pkl"
   id_login_file: "data/id_login.csv"
   acceslibre_file: "data/acceslibre-with-web-url.csv"
   datatour_file: "data/Lieux de visite.xlsx"
